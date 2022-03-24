@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package auth;
+
+service AuthController {
+  rpc Create (ApiKey) returns (ApiToken);
+  rpc Login (Login) returns (ApiToken);
+}
+
+// Declare the types used above
+message ApiKey {
+  string key = 1;
+}
+message ApiToken {
+  string token = 1;
+}
+
+message Login {
+  string username = 1;
+  string password = 2;
+}

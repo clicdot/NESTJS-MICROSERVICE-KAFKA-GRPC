@@ -1,0 +1,217 @@
+services:
+  kafdrop:
+    image: obsidiandynamics/kafdrop
+    restart: always
+    ports:
+      - ${KAFDROP_PORT}:${KAFDROP_PORT}
+    environment:
+      KAFKA_BROKERCONNECT: "kafka:29092"
+      JVM_OPTS: "-Xms16M -Xmx48M -Xss180K -XX:-TieredCompilation -XX:+UseStringDeduplication -noverify"
+    depends_on:
+      - kafka
+    networks:
+      - default
+
+  kafka:
+    image: obsidiandynamics/kafka
+    restart: always
+    ports:
+      - ${ZOOKEEPER_PORT}:${ZOOKEEPER_PORT}
+      - ${KAFKA_MAPPED_PORT}:${KAFKA_PORT}
+      - 9093:${KAFKA_MAPPED_PORT}
+    environment:
+      KAFKA_LISTENERS: "INTERNAL://:29092,EXTERNAL://:9092"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:29092,EXTERNAL://localhost:9092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_ZOOKEEPER_SESSION_TIMEOUT: "6000"
+      KAFKA_RESTART_ATTEMPTS: "10"
+      KAFKA_RESTART_DELAY: "5"
+      ZOOKEEPER_AUTOPURGE_PURGE_INTERVAL: "0"
+    networks:
+      - default
+
+  mongo:
+    container_name: ${APPNAME}_mongo
+    image: mongo
+    command: mongod --port ${MONGOOSEPORT}
+    expose:
+      - ${MONGOOSEPORT}
+    ports:
+      - ${PORT_MAPPED_MONGO}:${MONGOOSEPORT}
+    restart: always
+    networks:
+      - default
+
+  postgres:
+    image: postgres:alpine
+    environment:
+      POSTGRES_USER: ${PGUSER}
+      POSTGRES_PASSWORD: ${PGPASSWORD}
+      POSTGRES_DB: ${PGDATABASE}
+    expose:
+      - ${PGPORT}
+    ports:
+      - ${PORT_MAPPED_POSTGRES}:${PGPORT}
+    restart: always
+    networks:
+      - default
+
+  redis:
+    container_name: ${APPNAME}_redis
+    image: redis:alpine
+    # command: redis-server /usr/local/etc/redis/redis.conf
+    # volumes:
+    #   - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf
+    expose:
+      - ${PORT_REDIS}
+    ports:
+      - ${PORT_MAPPED_REDIS}:${PORT_REDIS}
+    restart: always
+    networks:
+      - default
+
+  auth:
+    container_name: ${APPNAME}_auth
+    build:
+      context: ./microservices/auth.api
+      dockerfile: ./docker/${dFile}
+    volumes:
+      - "./microservices/auth.api/src:/app/src"
+    expose:
+      - ${PORT_AUTH}
+      - 8877
+      - 8878
+      - 8879
+      - 8880
+    ports:
+      - 9231:9229
+      # - "${AUTH_PORT_MAPPED}:${PORT_TARGET}"
+    environment:
+      DEBUG: ${DEBUG}
+      NODE_ENV: ${NODE_ENV}
+      ENV: ${NODE_ENV}
+      MODE: ${MODE}
+      PORT_TARGET: ${PORT_AUTH}
+      SWAGGER_TITLE: "Swagger Auth"
+      SWAGGER_DESCR: "Swagger"
+      SWAGGER_VS: "1.0.0"
+      MONGOOSEHOST: mongo
+      MONGOOSEPORT: ${MONGOOSEPORT}
+      MONGOOSEDB: ${MONGOOSEDB}
+      MONGOOSETLSCERT: ${MONGOOSETLSCERT}
+      REDISHOST: redis
+      REDISPORT: 6379
+      RUN_MIGRATIONS: "true"
+      PGHOST: postgres
+      PGUSER: ${PGUSER}
+      PGPASSWORD: ${PGPASSWORD}
+      PGPORT: ${PGPORT}
+      PGDATABASE: ${PGDATABASE}
+      PRIVATE_KEY: ${PRIVATE_KEY}
+      PUBLIC_KEY: ${PUBLIC_KEY}
+    depends_on:
+      - mongo
+      - redis
+      - postgres
+      - kafka
+    links:
+      - db
+      - redis
+      - postgres
+      - kafka
+    networks:
+      - default
+
+  billing:
+    container_name: ${APPNAME}_billing
+    build:
+      context: ./microservices/billing.api
+      dockerfile: ./docker/${dFile}
+    volumes:
+      - "./microservices/billing.api/src:/app/src"
+    expose:
+      - ${PORT_BILLING}
+      - 8877
+      - 8878
+      - 8879
+      - 8880
+    ports:
+      - 9232:9229
+      # - "${AUTH_PORT_MAPPED}:${PORT_TARGET}"
+    environment:
+      DEBUG: ${DEBUG}
+      NODE_ENV: ${NODE_ENV}
+      ENV: ${NODE_ENV}
+      MODE: ${MODE}
+      PORT_TARGET: ${PORT_BILLING}
+      SWAGGER_TITLE: "Swagger Billing"
+      SWAGGER_DESCR: "Swagger"
+      SWAGGER_VS: "1.0.0"
+      MONGOOSEHOST: mongo
+      MONGOOSEPORT: ${MONGOOSEPORT}
+      MONGOOSEDB: ${MONGOOSEDB}
+      MONGOOSETLSCERT: ${MONGOOSETLSCERT}
+      REDISHOST: redis
+      REDISPORT: 6379
+      RUN_MIGRATIONS: "true"
+      PGHOST: postgres
+      PGUSER: ${PGUSER}
+      PGPASSWORD: ${PGPASSWORD}
+      PGPORT: ${PGPORT}
+      PGDATABASE: ${PGDATABASE}
+      PRIVATE_KEY: ${PRIVATE_KEY}
+      PUBLIC_KEY: ${PUBLIC_KEY}
+    depends_on:
+      - mongo
+      - redis
+      - postgres
+      - kafka
+    links:
+      - db
+      - redis
+      - postgres
+      - kafka
+    networks:
+      - default
+
+  http:
+    container_name: ${APPNAME}_http
+    build:
+      context: ./orchestrator/http.api
+      dockerfile: ./docker/${dFile}
+    volumes:
+      - "./orchestrator/http.api/src:/app/src"
+    expose:
+      - ${PORT_HTTP}
+    ports:
+      - "${PORT_MAPPED}:${PORT_HTTP}"
+      - 9230:9229
+    environment:
+      DEBUG: ${DEBUG}
+      NODE_ENV: ${NODE_ENV}
+      ENV: ${NODE_ENV}
+      MODE: ${MODE}
+      PORT_MAPPED: ${PORT_MAPPED}
+      PORT_TARGET: ${PORT_HTTP}
+      SWAGGER_TITLE: "Swagger API"
+      SWAGGER_DESCR: "Swagger"
+      SWAGGER_VS: "1.0.0"
+      PUBLIC_KEY: ${PUBLIC_KEY}
+    depends_on:
+      - mongo
+      - redis
+      - postgres
+      - kafka
+    links:
+      - db
+      - redis
+      - postgres
+      - kafka
+    networks:
+      - default
+networks:
+  default:
+    name: ${APPNAME}_orchestrator
+    driver: bridge
+version: '3.8'

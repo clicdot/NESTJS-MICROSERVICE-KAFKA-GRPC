@@ -1,0 +1,22 @@
+{
+  "name": "Micro-Mono",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "Philip Choi",
+  "license": "MIT",
+  "private": true,
+  "workspaces": [
+    "microservices/*",
+    "orchestrator/*"
+  ],
+  "scripts": {
+    "end": "docker compose down",
+    "lint": "yarn workspaces run lint",
+    "logs:http": "docker compose logs -tf http",
+    "logs:auth": "docker compose logs -tf auth",
+    "logs:bill": "docker compose logs -tf billing",
+    "start": "docker compose up -d",
+    "test": "yarn workspaces run test",
+    "test:cov": "yarn workspaces run test:cov"
+  }
+}

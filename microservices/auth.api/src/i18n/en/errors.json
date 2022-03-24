@@ -1,0 +1,20 @@
+{
+  "INFO": {
+    "DB": {
+      "TEST": "test"
+    },
+    "API": {}
+  },
+  "WARN": {
+    "DB": {
+      "TEST": "test"
+    },
+    "API": {}
+  },
+  "ERROR": {
+    "DB": {
+      "TEST": "test"
+    },
+    "API": {}
+  }
+}
